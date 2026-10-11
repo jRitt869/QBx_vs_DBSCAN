@@ -1,0 +1,27 @@
+# Local environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.vscode/
+
+# Local GPX datasets, generated outputs, and historical working copies
+*.gpx
+*.GPX
+demo_data/*
+!demo_data/003/
+!demo_data/dump/
+!demo_data/003_labels.csv
+!demo_data/README.md
+!demo_data/003/*.gpx
+!demo_data/003/*.GPX
+!demo_data/dump/*.gpx
+!demo_data/dump/*.GPX
+data/
+outputs/
+raw_data
+raw_data_jumps
+run_metadata.json
+docs/IMPROVEMENTS.md

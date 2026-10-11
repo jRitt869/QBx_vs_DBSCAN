@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/0" version="1.0" creator="OSM gpx_dump.py">
+  <trk>
+    <name>Track 0</name>
+    <number>0</number>
+    <trkseg>
+      <trkpt lat="50.2021133" lon="9.1878099">
+        <ele>147.00</ele>
+        <time>2009-09-10T07:35:35Z</time>
+      </trkpt>
+      <trkpt lat="50.2020950" lon="9.1878366">
+        <ele>146.00</ele>
+        <time>2009-09-10T07:35:36Z</time>
+      </trkpt>
+      <trkpt lat="50.2020516" lon="9.1878683">
+        <ele>146.00</ele>
+        <time>2009-09-10T07:35:37Z</time>
+      </trkpt>
+      <trkpt lat="50.2020166" lon="9.1878950">
+        <ele>146.00</ele>
+        <time>2009-09-10T07:35:38Z</time>
+      </trkpt>
+      <trkpt lat="50.2019933" lon="9.1879099">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:39Z</time>
+      </trkpt>
+      <trkpt lat="50.2019549" lon="9.1879166">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:40Z</time>
+      </trkpt>
+      <trkpt lat="50.2019183" lon="9.1879133">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:41Z</time>
+      </trkpt>
+      <trkpt lat="50.2018800" lon="9.1879149">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:42Z</time>
+      </trkpt>
+      <trkpt lat="50.2018616" lon="9.1879149">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:43Z</time>
+      </trkpt>
+      <trkpt lat="50.2018383" lon="9.1879049">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:44Z</time>
+      </trkpt>
+      <trkpt lat="50.2018183" lon="9.1878799">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:45Z</time>
+      </trkpt>
+      <trkpt lat="50.2017900" lon="9.1878633">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:46Z</time>
+      </trkpt>
+      <trkpt lat="50.2017633" lon="9.1878433">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:47Z</time>
+      </trkpt>
+      <trkpt lat="50.2017400" lon="9.1878266">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:48Z</time>
+      </trkpt>
+      <trkpt lat="50.2017166" lon="9.1878066">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:49Z</time>
+      </trkpt>
+      <trkpt lat="50.2016983" lon="9.1877866">
+        <ele>145.00</ele>
+        <time>2009-09-10T07:35:50Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,42 @@
+name: Python checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip check
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m pytest -q
+
+  spatial-analysis:
+    name: Spatial analysis extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            extensions/spatial_analysis/requirements.txt
+            extensions/spatial_analysis/requirements-dev.txt
+      - run: python -m pip install -r extensions/spatial_analysis/requirements-dev.txt
+      - run: python -m pip check
+      - run: python -m pytest -q extensions/spatial_analysis/tests
