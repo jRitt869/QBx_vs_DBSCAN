@@ -36,7 +36,15 @@ _BASE_RANGE = np.arange(170, 1350)
 
 
 def _get_color(hsb: FloatArray) -> IntArray:
-    """Convert custom HSB values to integer RGB triplets."""
+    """Convert the original custom hue/saturation/brightness representation to RGB.
+
+    Args:
+        hsb: Array of shape (tracks, 3), with hue indices into the 1530-color wheel
+            and fractional saturation/brightness channels.
+
+    Returns:
+        An integer RGB array of shape (tracks, 3).
+    """
     rgb = _HUE_RGB[hsb[:, 0].astype(np.intp)] * hsb[:, 2, None]
     maximum = np.max(rgb, axis=1, keepdims=True)
     rgb += (maximum - rgb) * (1 - hsb[:, 1, None])
@@ -44,7 +52,14 @@ def _get_color(hsb: FloatArray) -> IntArray:
 
 
 def hue_ranges(count: int) -> list[IntArray]:
-    """Allocate hue ranges, including when clusters outnumber discrete hues."""
+    """Allocate palette intervals, cycling hues when clusters outnumber available hues.
+
+    Args:
+        count: Number of clusters needing colors; zero keeps one fallback hue range.
+
+    Returns:
+        Integer hue-index arrays spanning the original palette's usable range.
+    """
     ranges = np.array_split(_BASE_RANGE, max(1, count))
     if count <= len(_BASE_RANGE):
         return ranges
@@ -57,7 +72,7 @@ def _tree_to_hsb(
     min_size: int,
     rule: Callable[[int, int, int], float],
 ) -> tuple[FloatArray, IntArray]:
-    """Color child clusters by parent, sibling position, and sibling count."""
+    """Assign child cluster labels and one HSB channel using their parent hierarchy."""
     levels = np.full(len(parent_levels), -1, dtype=np.int_)
     channel = np.zeros(len(parent_levels))
     eligible = [c for c in clusters if len(c) >= min_size and parent_levels[c[0]] >= 0]
@@ -73,9 +88,18 @@ def _tree_to_hsb(
 
 
 def _qb_to_colors(
-    tree: TreeClusterMap, temporal_clusters: Iterable[Cluster]
+    tree: TreeClusterMap, temporal_clusters: Iterable[Cluster] | None = None
 ) -> tuple[tuple[IntArray, ...], tuple[IntArray, ...]]:
-    """Return four RGB arrays and label arrays in clustering input order."""
+    """Apply the original hierarchical colors to three spatial layers and optional time.
+
+    Args:
+        tree: Three-level QuickBundlesX tree in the clustering input's track ordering.
+        temporal_clusters: Optional leaf subdivisions using indices in that same ordering.
+
+    Returns:
+        A tuple of RGB arrays and a tuple of assignment arrays, ordered by layer.
+        Each layer has one entry per track; excluded clusters are red with label -1.
+    """
     track_count = len(tree.root)
     levels1 = np.full(track_count, -1, dtype=np.int_)
     eligible = [c for c in tree.get_clusters(1) if len(c) >= SPATIAL_MIN_SIZE]
@@ -107,6 +131,9 @@ def _qb_to_colors(
     hsb[:, 2] = brightness
     hsb[levels3 == -1] = OUTLIER_HSB
     colors3 = _get_color(hsb)
+
+    if temporal_clusters is None:
+        return (colors1, colors2, colors3), (levels1, levels2, levels3)
 
     saturation, levels4 = _tree_to_hsb(
         temporal_clusters,

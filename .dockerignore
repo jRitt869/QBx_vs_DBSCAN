@@ -8,9 +8,9 @@ __pycache__
 .ruff_cache
 .vscode
 temp
-demo_data
 data
 outputs
+local_archive
 **/*.gpx
 **/*.GPX
 **/raw_data
@@ -18,4 +18,23 @@ outputs
 **/run_metadata.json
 docs
 tests
-extensions
+extensions/analytics/tests
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+
+# Public inputs needed for automatic database preparation.
+demo_data/*
+!demo_data/003/
+!demo_data/003_labels.csv
+!demo_data/dump/
+!demo_data/003/*.gpx
+!demo_data/003/*.GPX
+!demo_data/dump/*.gpx
+!demo_data/dump/*.GPX
+demo_data/dump/*.png
+demo_data/dump/*.md
+demo_data/dump/*audit.csv
+demo_data/dump/*duplicates.csv
+demo_data/dump/*skipped_tracks.csv
+demo_data/dump/*validation.json

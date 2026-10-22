@@ -3,8 +3,7 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    CLUSTER_DATA_DIR=/visualize-clusters/output
+    PYTHONUNBUFFERED=1
 
 WORKDIR /visualize-clusters
 
@@ -15,4 +14,4 @@ COPY . .
 
 EXPOSE 5006
 
-ENTRYPOINT ["sh", "./start.sh"]
+ENTRYPOINT ["python", "-m", "scripts.start"]

@@ -7,7 +7,23 @@ import numpy as np
 import pytest
 from shapely.geometry import LineString
 
-from track_clusters.data import _s2_to_cartesian
+from extensions.analytics.temporal import calendar_phases, prepare_temporal_features
+from scripts.config import validate
+from scripts.config.validate import IngestionInput
+
+
+@pytest.fixture
+def ingestion_input(monkeypatch):
+    """Create model inputs whose key resolves to an isolated test database."""
+
+    def create(directory, database, **settings):
+        monkeypatch.setattr(validate, "OUTPUT_DIRECTORY", database.parent)
+        settings.setdefault("dataset_key", database.stem)
+        inputs = IngestionInput(source_folder=directory, **settings)
+        assert inputs.database == database.resolve()
+        return inputs
+
+    return create
 
 
 @pytest.fixture
@@ -21,7 +37,9 @@ def feature_tracks() -> gpd.GeoDataFrame:
         )
         hour = 8 if track_id % 12 < 6 else 18
         spatial.append(points)
-        temporal.append([_s2_to_cartesian(0, 2 * np.pi * hour / 24)] * 13)
+        temporal.append(
+            calendar_phases([datetime(2024, 1, 8, hour, tzinfo=UTC).timestamp()] * 13, UTC)
+        )
         geometry.append(LineString(points[:, :2]))
     return gpd.GeoDataFrame(
         {
@@ -63,3 +81,23 @@ def track_directory(tmp_path: Path) -> Path:
     ET.indent(root)
     ET.ElementTree(root).write(tmp_path / "tracks.gpx", encoding="utf-8", xml_declaration=True)
     return tmp_path
+
+
+@pytest.fixture
+def qbx_tracks(feature_tracks):
+    """Spatial kernel fixture with packed cyclic features for its temporal subdivision."""
+    raw = feature_tracks.copy()
+    raw["13_pts"] = [
+        np.column_stack(
+            (
+                points[:, :2],
+                np.full(
+                    13, datetime(2024, 1, 8, 8 if index % 12 < 6 else 18, tzinfo=UTC).timestamp()
+                ),
+            )
+        )
+        for index, points in enumerate(feature_tracks["13_pts"])
+    ]
+    result = prepare_temporal_features(raw, algorithm="qbx", time_zone=UTC)
+    result["13_pts"] = feature_tracks["13_pts"].tolist()
+    return result

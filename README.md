@@ -1,174 +1,156 @@
-# GPX Track Clustering
+# GPX Trajectory Analytics
 
-An internship project for comparing **QuickBundlesX** and **DBSCAN** on GPS trajectories. It reads timestamped GPX files, clusters routes spatially and temporally, and displays the results on an interactive Bokeh map.
+[![Python checks](https://github.com/jRitt869/gpx-track-analytics/actions/workflows/checks.yml/badge.svg)](https://github.com/jRitt869/gpx-track-analytics/actions/workflows/checks.yml)
 
-The original GPX preprocessing, clustering integration, temporal encoding, hierarchical color mapping, visualization, and Docker setup were written independently by the project author. This version adds maintenance refactoring, bug fixes, a demo using the supplied GPX tracks, and regression tests. The application retains the original comparison workflow; it is an exploratory research prototype.
+A data analysis application built around GPS trajectories: audit GPX dataset quality and explore **QuickBundlesX / DBSCAN** evaluation findings in a **Bokeh dashboard**. The workflow makes source records, exclusions, label provenance, parameter choices, and exploratory findings inspectable and repeatable.
 
-The maintained application lives in `track_clusters/`, with its regression tests in `tests/`. The later annotation and evaluation tools, their tests, and saved results are grouped separately under [`extensions/spatial_analysis/`](extensions/spatial_analysis/README.md).
+The tool is based on an internship application which remains documented and preserved in [`historical/`](historical/README.md). Its core functionality was reused in `track_clusters/`. Later ingestion, SQLite reporting, clustering evaluation, and dashboard tooling live together in the [analytics extension](extensions/analytics/README.md).
 
-This repository documents previous research work, active development and ongoing support are not planned.
+## Using the application
 
-![QuickBundlesX clustering of the supplied dump GPX tracks](docs/demo.png)
+The worklow is entirely modular. Each step from data ingestion over evaluation to visualization can be accessed though a standalone entry point:
 
-*Current demo using `demo_data/dump`, exported from QuickBundlesX's coarsest spatial layer with `eps = 0.5`, `factor = 2`, and `seed = 0`: 7 clusters and 4 outliers among 125 loaded tracks. Colors indicate algorithm clusters; red tracks are outliers. The interface also provides spatial/time layer selection and visibility controls. The original internship screenshot is retained in the historical documentation.*
+| Module | Responsibility |
+| --- | --- |
+| [`load_data.py`](scripts/load_data.py) | Import GPX tracks and optional CSV reference labels into source-specific SQLite databases, individually or in a configured batch. |
+| [`get_clusters.py`](scripts/get_clusters.py) | Run DBSCAN or QuickBundlesX on stored tracks and save clustering settings, labels, and colors. |
+| [`evaluate.py`](scripts/evaluate.py) | Evaluate one algorithm against hand-made labels or a configured reference run, creating missing clustering results and storing agreement scores. |
+| [`run_server.py`](scripts/run_server.py) | Serve the Bokeh dashboard to explore stored tracks, clustering maps, reference statistics, and evaluations. |
+| [`start.py`](scripts/start.py) | Ingest configured sources, evaluate both algorithms for supported input modes, and start the dashboard during container setup. |
 
-## What you can explore
+These scripts are all located in `scripts/`. Invoke ingestion, clustering, and evaluation as `python -m scripts.NAME` from the repository root; add `-h` for descriptions, choices, and defaults. Serve `run_server.py` through `python -m bokeh serve scripts/run_server.py --show`; Bokeh's server options are described by `python -m bokeh serve --help`.
+
+An exemplary workflow looks as follows. From the repository root, run
+
+```bash
+python -m pip install -r extensions/analytics/requirements.txt
+python -m scripts.load_data single demo_data/dump --database-key dump
+python -m scripts.get_clusters outputs/dump.sqlite 0.5 0.1 --spatiotemporal
+python -m scripts.get_clusters -q outputs/dump.sqlite 0.5 0.1 --spatiotemporal
+python -m scripts.evaluate outputs/dump.sqlite --reference-config scripts/config/reference_qbx.toml
+python -m bokeh serve scripts/run_server.py --show
+```
+
+At any time, a provided track source corresponds to **one SQLite database** in `outputs/`. This database is used to service all queries for tracks, points, hand-made reference labels, clustering assignments/settings, and evaluation scores. Repeated calls of an entry point on the same dataset lead to changes in the database only when the provided arguments change.
+
+### The data source
+
+The ingestion script reads GPX files within a specified directory, as well as optional reference labels through CSV files. Additional tracks/labels can be appended to the existing catalog using the `load_data.py` script.
+
+Tracks with complete valid timestamps support `--spatiotemporal` clustering. Both algorithms default to separate spatial layers followed by a subcluster layer obtained from a day/week/month temporal subdivision. Adding `--joint` combines space and all three calendar phases in the primary clustering layers, without an extra time layer. `--p` configures the temporal distance and space–time Lp combination; spatial distances remain Euclidean. The [cyclic metric specification](extensions/analytics/README.md#cyclic-temporal-metrics) defines the distances and defaults.
+
+If no reference labels are provided, `evaluate.py` can take an optional reference configuration as ``--reference-config FILE.toml``, which specifies the clustering parameters of a reference run against which the evaluation is performed.
+
+### Sample data and batch ingestion
+
+The repository includes two exemplary data sources in `demo_data/003` and `demo_data/dump`, alongside [`demo_data/003_labels.csv`](demo_data/003_labels.csv), which contains hand-made labels for the tracks in `demo_data/003`. They can be fed into their respective databases `outputs/003.sqlite` and `outputs/dump.sqlite` by running
+
+```bash
+python -m scripts.load_data batch
+```
+
+By default, this command accesses the file [`extensions/analytics/datasets.toml`](extensions/analytics/datasets.toml), which contains context for the creation of multiple databases. To adjust the input pipeline, this file can be modified, or a different config file is provided using the `--config` argument.
+
+## Navigating the dashboard
+
+Open [http://localhost:5006/run_server](http://localhost:5006/run_server) and select a **Data source** at the top right. The interface consists of four tabs:
+
+- **DBSCAN** and **QuickBundlesX** appear independently when their source database has clustering results. Each contains a run selector, map, layer controls, and track/cluster/outlier counts.
+- **Overview** describes the input tracks, eligibility, labels, duplicates, timestamps, gaps, and available results.
+- **Analysis** displays only recorded evaluations, with selections identifying algorithm, input mode, and hand-made-label or reference-run baseline. Before evaluation, it contains a disclaimer.
+
+Reload the browser after scripts add sources or new results. Bokeh discovers databases in the repository's fixed `outputs/` directory. Browser ingestion controls are absent.
+
+![Overview Tab](docs/Overview.jpg)
+*The Overview tab for the sample data set in `demo_data/dump`.*
+
+![Analysis Tab](docs/Analysis.jpg)
+*The Analysis tab for `demo_data/dump`, with evaluations against one of the default reference runs.*
+
+### The track clustering map
+
+The tabs **DBSCAN** and **QuickBundlesX** show maintained clustering results for a selected run, using the map controls and styling in `track_clusters/viewer.py`. The [historical application](historical/README.md) has its own renderer and numerical pipeline under `historical/`. Both can read the same source databases; their clustering results are displayed separately.
+
+The map view consists of:
 
 - Three spatial QuickBundlesX layers and their temporal subdivisions.
 - DBSCAN spatial clusters and a temporal subdivision of each cluster.
 - Cluster colors, red outliers, and optional hiding of outliers.
 - Markers for time gaps longer than 30 minutes, with durations on hover.
-- Track names and cluster assignments on hover.
+- The cluster source, which can be chosen from existing runs in the database.
 
-Clustering parameters are chosen when preprocessing. The map switches layers and display options; changing parameters requires another preprocessing run.
+### Historical application
 
-## Run the included demo
+See the [historical README](historical/README.md) for instructions to run the standalone internship visualization and its preprocessing options.
 
-Use **Python 3.12**. The included [`demo_data/dump`](demo_data/README.md) sample contains 74 GPX files and 151 recorded tracks. The application loads 125 tracks with at least five points, skips 26 shorter tracks, and detects 31 gaps longer than 30 minutes. All supplied points have timestamps, so both spatial and temporal layers are available. The GPX files are used unchanged.
+## Docker
 
-Create an environment and install dependencies from the repository root:
-
-```bash
-python -m venv .venv
-```
-
-Activate it with `source .venv/bin/activate` on Linux/macOS or `.\.venv\Scripts\Activate.ps1` in PowerShell, then run:
-
-```bash
-python -m pip install -r requirements.txt
-python get_raw_data.py --timezone UTC demo_data/dump 0.5 0.1
-bokeh serve run_server.py --show
-```
-
-Open [http://localhost:5006/run_server](http://localhost:5006/run_server). The default algorithm is DBSCAN.
-
-At these settings, DBSCAN produces 9 spatial clusters and 47 outliers on the dump sample.
-
-To try QuickBundlesX, stop the server, regenerate the tables, and restart:
-
-```bash
-python get_raw_data.py -q --timezone UTC demo_data/dump 0.5 0.1
-bokeh serve run_server.py --show
-```
-
-These are exploratory display settings. Each algorithm uses its own distance convention, and matching epsilon values do not make their thresholds equivalent. The demo colors come from clustering predictions; the separate [geographic annotations](demo_data/dump/LABELS.md) are used only by the optional spatial evaluator.
-
-### Docker
-
-```bash
-docker build -f dockerfile -t visualize-clusters:latest .
-```
-
-Mount the included `demo_data/dump` directory. In PowerShell:
+To use the application inside a docker container, change to the root directory and run 
 
 ```powershell
-docker run --rm -p 127.0.0.1:5006:5006 --mount "type=bind,source=$PWD/demo_data/dump,target=/geodata,readonly" visualize-clusters:latest -q --timezone UTC /geodata 0.5 0.1
+docker build -t visualize-clusters:latest .
+docker run --rm -p 127.0.0.1:5006:5006 visualize-clusters:latest
 ```
 
-On Linux/macOS:
-
-```bash
-docker run --rm -p 127.0.0.1:5006:5006 --mount "type=bind,source=$(pwd)/demo_data/dump,target=/geodata,readonly" visualize-clusters:latest -q --timezone UTC /geodata 0.5 0.1
-```
-
-Open the same map URL. The container preprocesses the mounted data, then starts Bokeh. If preprocessing fails, the server does not start. Outputs remain inside the container unless you mount an output directory separately.
-
-## Use your own GPX files
-
-```text
-python get_raw_data.py [-q] [--seed N] [--factor F] [--min_s N]
-                       [--timezone ZONE] [--output-dir DIRECTORY]
-                       path eps eps_time
-```
-
-The input directory is scanned in filename order, without recursion. Both `.gpx` and `.GPX` files are accepted. Tracks need at least five points with nonnegative, chronological timestamps. Missing timestamps or invalid coordinates produce a file/track error. Segments within each GPX track are joined, as in the original implementation.
-
-| Argument | Meaning | Default |
-| --- | --- | --- |
-| `-q` | Use QuickBundlesX | DBSCAN |
-| `eps` | Spatial clustering threshold | Required |
-| `eps_time` | Temporal clustering threshold | Required |
-| `--factor` | QBx thresholds: `[factor² × eps, factor × eps, eps]`; at least 1 | 2 |
-| `--seed` | Integer seed for QBx input ordering | 0 |
-| `--min_s` / `--min-samples` | DBSCAN spatial `min_samples` | 5 |
-| `--timezone` | IANA timezone, e.g. `UTC` or `Europe/Berlin` | Host-local |
-| `--output-dir` | Destination for generated tables and run metadata | Current directory |
-
-QBx spatial clusters smaller than five tracks are displayed as outliers. Both temporal layers use a minimum size of three. DBSCAN's spatial minimum can be changed independently.
-
-The generated files are `raw_data` and `raw_data_jumps` (Feather tables), plus `run_metadata.json` recording parameters, timezone, display projection, and track counts. To load a custom output directory, set `CLUSTER_DATA_DIR` before starting Bokeh:
+Open `http://localhost:5006/run_server` after setup completes. First startup takes longer because it creates the databases and computes results. To retain them across containers, use a writable named volume:
 
 ```powershell
-$env:CLUSTER_DATA_DIR = "outputs/qbx"
-bokeh serve run_server.py --show
+docker run --rm -p 127.0.0.1:5006:5006 --mount "type=volume,source=path-to-gpx-files,target=/visualize-clusters/outputs" visualize-clusters:latest
 ```
 
-On Linux/macOS: `CLUSTER_DATA_DIR=outputs/qbx bokeh serve run_server.py --show`.
+On each start, `scripts/start.py` gets called to automatically ingest configured sources, run both algorithms for each supported mode, and evaluates the data against the default reference run, which is defined in [`scripts/config/reference_qbx.toml`](scripts/config/reference_qbx.toml) when `supports_time()` is true and in [`reference_qbx_spatial.toml`](scripts/config/reference_qbx_spatial.toml) otherwise. Bokeh starts after this setup succeeds.
 
-The basemap uses an external tile service and needs an internet connection. Track data and clustering run locally.
+For local preparation without a server:
+
+```bash
+python -m scripts.start --prepare-only
+```
+
+Additional Bokeh options, such as `--allow-websocket-origin HOST:PORT`, are forwarded to the server. To serve already prepared databases without running setup, use `python -m bokeh serve scripts/run_server.py --show`.
+
+## Goals and architecture choices
+
+The tool can be used to investigate questions such as:
+
+- Which tracks are eligible for clustering, and where are labels or timestamps missing?
+- How do parameter choices affect cluster counts, outliers, and agreement with a reference?
+- How closely do DBSCAN and QuickBundlesX match hand-made labels or a chosen reference run?
+- Where do trajectories form spatial groups, and how do those groups split by time?
+
+### Modularity
+
+Ingestion, clustering, evaluation, and visualization are separate steps linked by a persistent SQLite database for each source. Tracks, reference labels, run configurations, and results can be added as needed, making the database a reusable record of the analysis. Moreover, the dashboard can be used to read stored results without rerunning clustering or evaluation. Expensive runs on large datasets can therefore be computed separately and inspected on demand, with only data loading and rendering costs.
+
+This modular structure also provides a basis for integrating additional clustering algorithms and extending the database and dashboard with further analyses. The clustering results are stored and accessed in a general format that allows for compatibility with arbitrary algorithms, including hierarchical ones.
 
 ## How the comparison works
 
 1. Parse tracks and mark time gaps longer than 30 minutes.
-2. Resample each trajectory to 13 points, including its timestamp coordinate.
-3. Encode weekday and hour on a unit sphere; remove timestamps from spatial features.
-4. Run spatial clustering, then temporal clustering within each spatial cluster.
+2. Resample each trajectory to 13 points. DBSCAN and separate-mode QuickBundlesX use spatial arc length and interpolate timestamps onto those positions; joint QuickBundlesX includes timestamps in resampling.
+3. For spatiotemporal runs, map the resampled timestamps to calendar phases.
+4. Cluster spatial features and optionally subdivide using temporal features, or cluster space and time jointly.
 5. Project geometries to Web Mercator for the map and save display tables.
 
 | Detail | QuickBundlesX | DBSCAN |
 | --- | --- | --- |
-| Spatial features | Ordered 13-point longitude/latitude trajectories, padded with zero z | Flattened longitude/latitude samples, standardized per feature |
-| Spatial distance | Average pointwise Euclidean distance | Euclidean distance after standardization |
-| Spatial threshold units | Coordinate degrees; not metres | Standardized feature space; not metres |
-| Temporal features | All 13 encoded weekday/hour samples | First encoded weekday/hour sample |
-| Temporal distance | Normalized angular distance over concatenated samples | scikit-learn cosine distance |
-| Output | Three spatial layers plus time | One spatial layer plus time |
+| Spatial-only distance | Average pointwise Euclidean distance, divided by its fitted median | Same mean pointwise Euclidean distance |
+| Spatial coordinates | Longitude/latitude with one shared spatial scale | Longitude/latitude with one shared spatial scale |
+| Separate temporal mode (default) | Scaled mean pointwise spatial distance, followed by temporal subdivision | Same distance and temporal subdivision |
+| Joint temporal mode | Mean pointwise spatial/torus Lp distance with separately calibrated components | Same averaged joint distance |
+| Temporal subdivision | Mean pointwise day/week/month torus angular Lp distance | Same averaged torus metric |
+| Output | Three primary layers; separate mode adds one time layer | One primary layer; separate mode adds one time layer |
 
-QBx's temporal adapter preserves all samples and computes `arccos(cosine_similarity) / π`, following DIPY's cosine metric convention while keeping the 13-by-3 arrays required by QBx. The original direct `CosineMetric(IdentityFeature())` input was incompatible with the sequence shape. See [refactoring notes](docs/REFACTORING.md) for changes that affect displayed assignments.
+Both temporal modes retain all three calendar cycles and average distances over all 13 corresponding samples. Euclidean/Lp norms apply within each sample. The exponent and joint/separate mode are stored with each spatiotemporal run. QuickBundlesX uses circular centroid features to handle cycle boundaries.
 
-**The algorithms' epsilon values are not directly comparable.** Their spatial normalization and temporal distance conventions differ. Resampling includes timestamps, so sampling positions can depend on recording intervals. The weekday/hour sphere has representational ambiguities, and GPX segments are joined. These historical choices are retained and documented as limitations.
+Each primary metric is calibrated using median nonzero distances from reproducibly sampled track pairs. Joint spatial and temporal components are balanced separately for both algorithms; spatial scaling uses one scalar across both coordinates and every sample. Epsilon is measured in these normalized units, so thresholds should be explored for each metric. See [distance calibration](extensions/analytics/README.md#distance-calibration) for the defaults and stored values.
 
-The [historical README](docs/ARCHIVE_README.md) preserves the original parameter tables. The original scoring protocol is not documented here, and those figures have not been reproduced.
+Joint QuickBundlesX's timestamp-inclusive resampling can depend on recording intervals, and GPX segments are joined. The [historical application](historical/README.md) retains its original resampling, weekday/hour sphere encoding, scaling, and metrics.
 
-## Later additions: optional spatial analysis
+The [historical README](historical/ARCHIVE_README.md) preserves the original parameter tables. The original scoring protocol is not documented here, and those figures have not been reproduced.
 
-The separate [spatial analysis extension](extensions/spatial_analysis/README.md) contains the newly added spatial evaluator, geographic annotation scripts, plotting helpers, tests, and saved results. It has its own dependencies and test suite. These tools were added after the internship project and leave the application's spatial/time workflow unchanged.
+## Later additions: analytics and evaluation
 
-```bash
-python -m pip install -r extensions/spatial_analysis/requirements.txt
-python -m extensions.spatial_analysis.evaluate demo_data/003 demo_data/003_labels.csv --output-dir outputs/evaluation_003
-```
-
-The author's original `003` labels remain in `demo_data/003_labels.csv`. The later [dump annotations and review plots](demo_data/dump/LABELS.md) remain alongside the tracks. Evaluation results and methodology are documented in the extension's README.
-
-## Development
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
-python -m ruff check .
-python -m ruff format --check .
-python -m pip check
-```
-
-These commands run the application's 32 regression tests, covering spatial assignment after QBx shuffling, seeded repeatability, temporal labels, all-outlier cases, GPX validation, time gaps, empty jump tables, Feather round trips, projection, and Bokeh session independence. The extension's 20 tests run separately using the instructions in its README. GitHub Actions reports the application and extension suites as separate jobs on Python 3.12.
-
-| File or directory | Responsibility |
-| --- | --- |
-| `get_raw_data.py` | Original CLI entry point and public function imports |
-| `run_server.py` | Bokeh server entry point |
-| `track_clusters/data.py` | GPX loading, resampling, and time encoding |
-| `track_clusters/clustering.py` | Algorithm integration and temporal metric adapter |
-| `track_clusters/colors.py` | Original hierarchical color scheme |
-| `track_clusters/pipeline.py` | Validation, projection, and output tables |
-| `track_clusters/viewer.py` | Map, widgets, callbacks, and per-session state |
-| `tests/` | Maintenance regression tests for the internship application |
-| `extensions/spatial_analysis/` | Later annotation/evaluation tools, dependencies, tests, and saved results |
-| `demo_data/dump/` | Timestamped GPX sample used by the application demo; separate annotations remain alongside the tracks |
-| `docs/IMPROVEMENTS.md` | Prioritized portfolio and research improvements |
-| `docs/REFACTORING.md` | Preservation decisions, fixes, and verification |
-
-The selected `demo_data/003` and `demo_data/dump` samples, their labels, and review artifacts are allowed by Git's ignore rules. Other local GPX data, generated tables, environments, and the existing `temp` working copies remain ignored. Demo datasets and optional extensions are excluded from the application container build. The `temp` files are retained locally for reference.
+The [analytics extension](extensions/analytics/README.md) contains ingestion, SQLite reporting, clustering and evaluation orchestration, and the Bokeh dashboard. Its [clustering and evaluation section](extensions/analytics/README.md#clustering-and-evaluation) explains reference configurations and scoring conventions. These tools were added after the internship project and leave the historical spatial/time workflow unchanged. Codex was used during the development of the extension.
 
 ## License
 

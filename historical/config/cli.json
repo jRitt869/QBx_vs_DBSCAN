@@ -1,0 +1,109 @@
+{
+  "commands": {
+    "get_raw_data": {
+      "description": "Store the original timestamp-inclusive clustering in an ingested source database.",
+      "model": "ClusteringInput",
+      "arguments": [
+        {
+          "field": "database",
+          "flags": [
+            "database"
+          ],
+          "help": "Existing source SQLite database containing ingested tracks"
+        },
+        {
+          "field": "eps",
+          "flags": [
+            "eps"
+          ],
+          "help": "Positive spatial clustering threshold in the selected algorithm's feature units"
+        },
+        {
+          "field": "eps_time",
+          "flags": [
+            "eps_time"
+          ],
+          "nargs": "?",
+          "help": "Positive temporal threshold; ignored with --spatial-only (default: 0.1)"
+        },
+        {
+          "field": "quickbundles",
+          "flags": [
+            "-q",
+            "--quickbundles"
+          ],
+          "action": "store_true",
+          "help": "Use QuickBundlesX instead of the default DBSCAN"
+        },
+        {
+          "field": "feature_mode",
+          "flags": [
+            "--spatial-only"
+          ],
+          "action": "store_const",
+          "const": "spatial",
+          "help": "Omit timestamps and temporal subdivisions instead of using historical spatial/time features"
+        },
+        {
+          "field": "min_samples",
+          "flags": [
+            "--min-samples",
+            "--min_s"
+          ],
+          "help": "Minimum spatial DBSCAN neighborhood size; ignored by QuickBundlesX (default: 5)"
+        },
+        {
+          "field": "factor",
+          "flags": [
+            "--factor"
+          ],
+          "help": "QuickBundlesX hierarchy multiplier, at least 1; ignored by DBSCAN (default: 2)"
+        },
+        {
+          "field": "seed",
+          "flags": [
+            "--seed"
+          ],
+          "help": "QuickBundlesX shuffle seed from 0 through 4294967295 (default: 0)"
+        },
+        {
+          "field": "timezone",
+          "flags": [
+            "--timezone"
+          ],
+          "help": "IANA time zone for temporal features, e.g. UTC or Europe/Berlin, or local (default: UTC)"
+        }
+      ]
+    },
+    "run_server": {
+      "description": "Preserved internship map, reading an explicitly selected source database.",
+      "model": "ViewerInput",
+      "arguments": [
+        {
+          "field": "database",
+          "flags": [
+            "database"
+          ],
+          "help": "Existing source SQLite database containing stored spatial/time runs"
+        },
+        {
+          "field": "run_id",
+          "flags": [
+            "--run-id"
+          ],
+          "help": "Positive stored spatial/time run ID matching the chosen algorithm; omit for its latest run"
+        },
+        {
+          "field": "algorithm",
+          "flags": [
+            "-q",
+            "--quickbundles"
+          ],
+          "action": "store_const",
+          "const": "qbx",
+          "help": "Display a QuickBundlesX run instead of a DBSCAN run"
+        }
+      ]
+    }
+  }
+}

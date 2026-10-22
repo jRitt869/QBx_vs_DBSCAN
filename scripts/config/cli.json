@@ -1,0 +1,310 @@
+{
+  "commands": {
+    "get_clusters": {
+      "description": "Cluster ingested source tracks and persist assignments in their SQLite database.",
+      "model": "ClusteringInput",
+      "arguments": [
+        {
+          "field": "database",
+          "flags": [
+            "database"
+          ],
+          "help": "Existing source SQLite database containing ingested tracks"
+        },
+        {
+          "field": "eps",
+          "flags": [
+            "eps"
+          ],
+          "help": "Positive primary clustering threshold in calibrated distance units"
+        },
+        {
+          "field": "eps_time",
+          "flags": [
+            "eps_time"
+          ],
+          "nargs": "?",
+          "help": "Positive separate temporal-layer threshold; inactive in spatial or joint mode (default: 0.1)"
+        },
+        {
+          "field": "quickbundles",
+          "flags": [
+            "-q",
+            "--quickbundles"
+          ],
+          "action": "store_true",
+          "help": "Use QuickBundlesX instead of the default DBSCAN"
+        },
+        {
+          "field": "feature_mode",
+          "flags": [
+            "--spatiotemporal"
+          ],
+          "action": "store_const",
+          "const": "spatiotemporal",
+          "help": "Enable day/week/month temporal features; spatial and temporal layers are separate unless --joint is passed"
+        },
+        {
+          "field": "min_samples",
+          "flags": [
+            "--min-samples",
+            "--min_s"
+          ],
+          "help": "Minimum primary DBSCAN neighborhood size; ignored by QuickBundlesX (default: 5)"
+        },
+        {
+          "field": "factor",
+          "flags": [
+            "--factor"
+          ],
+          "help": "QuickBundlesX hierarchy multiplier, at least 1; ignored by DBSCAN (default: 2)"
+        },
+        {
+          "field": "seed",
+          "flags": [
+            "--seed"
+          ],
+          "help": "Seed from 0 through 4294967295 for pair sampling and QuickBundlesX ordering (default: 0)"
+        },
+        {
+          "field": "timezone",
+          "flags": [
+            "--timezone"
+          ],
+          "help": "IANA time zone for temporal features, e.g. UTC or Europe/Berlin, or local (default: UTC)"
+        },
+        {
+          "field": "temporal_mode",
+          "flags": [
+            "--joint"
+          ],
+          "help": "Cluster space and all calendar phases jointly, without a separate time layer; requires --spatiotemporal (default: separate layers)",
+          "action": "store_const",
+          "const": "joint"
+        },
+        {
+          "field": "p",
+          "flags": [
+            "--p"
+          ],
+          "help": "Finite Lp metric exponent, at least 1; ignored in spatial mode (default: 2)"
+        },
+        {
+          "field": "scale_pairs",
+          "flags": [
+            "--scale-pairs"
+          ],
+          "help": "Maximum distinct track pairs for median distance calibration (default: 10000)"
+        }
+      ]
+    },
+    "evaluate": {
+      "description": "Evaluate clustering results stored in one source database.",
+      "model": "EvaluationInput",
+      "arguments": [
+        {
+          "field": "database",
+          "flags": [
+            "database"
+          ],
+          "help": "One ingested source database"
+        },
+        {
+          "field": "algorithm",
+          "flags": [
+            "-q",
+            "--quickbundles"
+          ],
+          "action": "store_const",
+          "const": "qbx",
+          "help": "Evaluate QuickBundlesX instead of DBSCAN"
+        },
+        {
+          "field": "eps",
+          "flags": [
+            "--eps"
+          ],
+          "nargs": "+",
+          "help": "Threshold sweep; defaults depend on the selected algorithm"
+        },
+        {
+          "field": "reference_config",
+          "flags": [
+            "--reference-config"
+          ],
+          "help": "TOML reference clustering configuration; omit to use complete stored hand-made labels"
+        },
+        {
+          "field": "seeds",
+          "flags": [
+            "--seeds"
+          ],
+          "nargs": "*",
+          "help": "Distinct pair-sampling/QuickBundlesX ordering seeds from 0 through 4294967295; at least one required for QuickBundlesX, may be empty for DBSCAN which uses seed 0 (default: 0 1 2 3 4)"
+        },
+        {
+          "field": "factor",
+          "flags": [
+            "--factor"
+          ],
+          "help": "QuickBundlesX hierarchy multiplier, at least 1; ignored by DBSCAN (default: 2)"
+        },
+        {
+          "field": "min_samples",
+          "flags": [
+            "--min-samples"
+          ],
+          "help": "Minimum primary DBSCAN neighborhood size; ignored by QuickBundlesX (default: 5)"
+        },
+        {
+          "field": "layer",
+          "flags": [
+            "--layer"
+          ],
+          "help": "One-based primary scoring layer; DBSCAN supports only 1 (default: DBSCAN 1, QuickBundlesX 3)"
+        },
+        {
+          "field": "feature_mode",
+          "flags": [
+            "--spatiotemporal"
+          ],
+          "action": "store_const",
+          "const": "spatiotemporal",
+          "help": "Enable day/week/month temporal features; spatial and temporal layers are separate unless --joint is passed"
+        },
+        {
+          "field": "eps_time",
+          "flags": [
+            "--eps-time"
+          ],
+          "help": "Positive separate temporal-layer threshold; inactive in spatial or joint mode (default: 0.1)"
+        },
+        {
+          "field": "timezone",
+          "flags": [
+            "--timezone"
+          ],
+          "help": "IANA time zone for target temporal features, e.g. UTC or Europe/Berlin, or local (default: UTC)"
+        },
+        {
+          "field": "temporal_mode",
+          "flags": [
+            "--joint"
+          ],
+          "help": "Cluster space and all calendar phases jointly, without a separate time layer; requires --spatiotemporal (default: separate layers)",
+          "action": "store_const",
+          "const": "joint"
+        },
+        {
+          "field": "p",
+          "flags": [
+            "--p"
+          ],
+          "help": "Finite target Lp metric exponent, at least 1 (default: 2)"
+        },
+        {
+          "field": "scale_pairs",
+          "flags": [
+            "--scale-pairs"
+          ],
+          "help": "Maximum calibration pairs for target runs; independent of reference settings (default: 10000)"
+        }
+      ]
+    },
+    "load_data": {
+      "description": "Import one GPX source or a configured batch into SQLite databases.",
+      "subcommands": {
+        "single": {
+          "description": "Ingest one GPX source and optional reference CSV into SQLite",
+          "model": "IngestionInput",
+          "arguments": [
+            {
+              "field": "source_folder",
+              "flags": [
+                "source_folder"
+              ],
+              "help": "Existing folder containing GPX files; subdirectories are not traversed"
+            },
+            {
+              "field": "dataset_key",
+              "flags": [
+                "--database-key",
+                "--dataset-key"
+              ],
+              "help": "Required source key; writes outputs/KEY.sqlite"
+            },
+            {
+              "field": "name",
+              "flags": [
+                "--name"
+              ],
+              "help": "Display name recorded when creating the source database (default: source folder name)"
+            },
+            {
+              "field": "labels",
+              "flags": [
+                "--labels"
+              ],
+              "help": "Optional hand-made CSV with file_name,id,cluster; id is the zero-based track index within its GPX file"
+            },
+            {
+              "field": "label_kind",
+              "flags": [
+                "--label-kind"
+              ],
+              "help": "Provenance category for the supplied hand-made labels"
+            },
+            {
+              "field": "label_description",
+              "flags": [
+                "--label-description"
+              ],
+              "help": "Description of the supplied labels and their provenance"
+            },
+            {
+              "field": "on_conflict",
+              "flags": [
+                "--on-conflict"
+              ],
+              "help": "Policy for changed existing GPX filenames; identical checksums are always reused"
+            }
+          ]
+        },
+        "batch": {
+          "description": "Ingest configured sources and references into their SQLite databases",
+          "model": "BatchInput",
+          "arguments": [
+            {
+              "field": "config",
+              "flags": [
+                "--config"
+              ],
+              "help": "TOML source configuration; input paths resolve relative to it (default: bundled analytics datasets.toml)"
+            }
+          ]
+        }
+      }
+    },
+    "start": {
+      "description": "Prepare configured source databases sequentially, then serve the Bokeh dashboard.",
+      "model": "StartupInput",
+      "arguments": [
+        {
+          "field": "config",
+          "flags": [
+            "--config"
+          ],
+          "help": "TOML source configuration to ingest and evaluate (default: bundled analytics datasets.toml)"
+        },
+        {
+          "field": "prepare_only",
+          "flags": [
+            "--prepare-only"
+          ],
+          "action": "store_true",
+          "help": "Prepare databases and exit instead of starting the dashboard (default: prepare and serve)"
+        }
+      ]
+    }
+  }
+}

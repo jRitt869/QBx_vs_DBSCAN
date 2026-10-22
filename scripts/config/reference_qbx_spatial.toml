@@ -1,0 +1,9 @@
+# Startup fallback when the source does not support temporal clustering.
+# Also usable explicitly with scripts.evaluate --reference-config.
+# Layer numbers are one-based; 3 is the finest QBx spatial layer.
+algorithm = "qbx"
+eps = 0.5
+feature_mode = "spatial"
+factor = 2
+seed = 0
+layer = 3

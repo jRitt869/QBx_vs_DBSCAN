@@ -1,0 +1,13 @@
+# Default startup reference for timed sources without complete hand-made labels.
+# Also usable explicitly with scripts.evaluate --reference-config.
+# Layer numbers are one-based; 4 includes the QBx temporal subdivision.
+algorithm = "qbx"
+eps = 0.5
+feature_mode = "spatiotemporal"
+eps_time = 0.1
+factor = 2
+seed = 0
+timezone = "UTC"
+temporal_mode = "separate"
+p = 2
+layer = 4

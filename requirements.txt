@@ -4,8 +4,10 @@ gpxpy==1.6.2
 geopandas==1.2.0
 numpy==2.5.0
 scikit-learn==1.9.1
-pyarrow==25.0.1
 pandas==3.0.6
 shapely==2.2.0
 xyzservices==2026.9.1
 tzdata==2026.5
+# Numerical, command-line, and source-configuration validation.
+pydantic==2.14.1
+SQLAlchemy==2.0.55

@@ -1,0 +1,14 @@
+# Paths are relative to this configuration file. Batch ingestion imports sources and
+# references only; run scripts/evaluate.py on each database to calculate results.
+[[datasets]]
+dataset_key = "003"
+name = "Author-labeled sample"
+source_folder = "../../demo_data/003"
+labels = "../../demo_data/003_labels.csv"
+label_kind = "author"
+label_description = "Original labels; spatial evaluation only."
+
+[[datasets]]
+dataset_key = "dump"
+name = "Recorded timestamped sample"
+source_folder = "../../demo_data/dump"

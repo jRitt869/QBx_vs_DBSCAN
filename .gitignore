@@ -21,6 +21,13 @@ demo_data/*
 !demo_data/dump/*.GPX
 data/
 outputs/
+local_archive/
+temp/
+reports/
+*.sqlite
+*.sqlite3
+*.db
+*.building
 raw_data
 raw_data_jumps
 run_metadata.json

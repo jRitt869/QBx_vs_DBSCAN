@@ -1,12 +1,15 @@
-from pathlib import Path
+from functools import partial
 
 import geopandas as gpd
 import pandas as pd
+import pytest
 from bokeh.core.validation import check_integrity
 from bokeh.document import Document
+from dipy.segment.metric import AveragePointwiseEuclideanMetric
 
+from extensions.analytics.temporal import TorusMetric, spatiotemporal_distance, torus_distance
 from track_clusters.clustering import get_dbscan_clusters, get_qb_clusters
-from track_clusters.viewer import ClusterView, build_document
+from track_clusters.viewer import ClusterView
 
 
 def _table(tracks: gpd.GeoDataFrame) -> pd.DataFrame:
@@ -23,7 +26,20 @@ def _jumps() -> pd.DataFrame:
 
 
 def test_controls_visibility_and_serialization(feature_tracks: gpd.GeoDataFrame) -> None:
-    view = ClusterView(_table(get_dbscan_clusters(feature_tracks.iloc[:2], 0.1, 0.01, 5)), _jumps())
+    view = ClusterView(
+        _table(
+            get_dbscan_clusters(
+                feature_tracks.iloc[:2],
+                0.1,
+                0.01,
+                5,
+                temporal_metric=torus_distance,
+                metric=partial(spatiotemporal_distance, temporal_scale=0),
+            )
+        ),
+        _jumps(),
+        labels=["Spatial", "Time"],
+    )
     assert view.layer_selector.active == 0
     assert view.track_source.data["is_visible"] == [1.0, 1.0]
     assert view.track_source.data["color"] == ["#ff0000", "#ff0000"]
@@ -41,9 +57,22 @@ def test_controls_visibility_and_serialization(feature_tracks: gpd.GeoDataFrame)
     document.to_json()
 
 
-def test_layers_colors_and_session_independence(feature_tracks: gpd.GeoDataFrame) -> None:
-    table = _table(get_qb_clusters(feature_tracks, 0.1, 0.01, 2, 7))
-    first, second = ClusterView(table, _jumps()), ClusterView(table, _jumps())
+def test_layers_colors_and_session_independence(qbx_tracks: gpd.GeoDataFrame) -> None:
+    table = _table(
+        get_qb_clusters(
+            qbx_tracks,
+            0.1,
+            0.01,
+            2,
+            7,
+            temporal_metric=TorusMetric(),
+            metric=AveragePointwiseEuclideanMetric(),
+        )
+    )
+    first, second = (
+        ClusterView(table, _jumps(), labels=["Layer 1", "Layer 2", "Layer 3", "Time"]),
+        ClusterView(table, _jumps(), labels=["Layer 1", "Layer 2", "Layer 3", "Time"]),
+    )
     first.layer_selector.active = 3
     assert first.track_source.data["cluster"] == table["clusters3"].tolist()
     assert first.layer == 3 and second.layer == 0
@@ -55,7 +84,6 @@ def test_layers_colors_and_session_independence(feature_tracks: gpd.GeoDataFrame
     assert first.track_source.data["color"] == first.track_source.data["colors3"]
 
 
-def test_missing_data(tmp_path: Path) -> None:
-    document = Document()
-    assert build_document(document, tmp_path) is None
-    assert "Preprocess" in document.roots[0].text
+def test_empty_map_data():
+    with pytest.raises(ValueError, match="track table is empty"):
+        ClusterView(pd.DataFrame(), _jumps(), labels=["Spatial"])
